@@ -4,17 +4,21 @@ import { motion } from "motion/react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../../firebase";
 import axios from "axios";
+import { useDispatch } from "react-redux";
+import { setUserData } from "../redux/userSlice";
 
 const LoginModal = ({ open, onClose }) => {
+    const dispatch = useDispatch()
   const handleGoogleAuth = async () => {
     try {
         const result = await signInWithPopup(auth, provider);
-        console.log(result)
+        // console.log(result)
         const {data} = await axios.post(`${import.meta.env.VITE_SERVER_URL}/api/auth/google`,{
             name:result.user.displayName,
             email:result.user.email,
             avatar:result.user.photoURL
         },{withCredentials:true})
+        dispatch(setUserData(data))
     } catch (error) {
       console.log(error);
     }

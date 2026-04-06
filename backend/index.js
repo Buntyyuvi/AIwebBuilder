@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config"
 import connectDB from "./database/db.js";
 import authRoute from "./routes/authRoutes.js";
+import websiteRoute from "./routes/websiteRoute.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
@@ -18,6 +19,7 @@ app.use(cors({
 }))
 
 app.use('/api/auth',authRoute)
+app.use('/api/website', websiteRoute)
 
 app.listen(PORT, () => {
     connectDB()
