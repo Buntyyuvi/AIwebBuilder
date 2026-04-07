@@ -1,8 +1,9 @@
+// console.log("API KEY:", process.env.OPENROUTER_API_KEY);
 export const generateResponse = async (prompt)=>{
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
   method: 'POST',
   headers: {
-    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY} `,
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
@@ -22,10 +23,10 @@ export const generateResponse = async (prompt)=>{
 });
 
 if(!res.ok){
-    const err = await res.text()
-    throw new Error("openrouter"+ error)
+    const err = await res.text();
+    throw new Error("openrouter"+ err);
 }
-const data = await res.json()
-return data
+const data = await res.json();
+return data.choices[0].message.content;
 
 }

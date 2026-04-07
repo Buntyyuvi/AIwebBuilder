@@ -1,5 +1,7 @@
 import { generateResponse } from "../config/openRouter.js";
-import { User } from "../models/userModel.js"
+import { User } from "../models/userModel.js";
+import extractJson from "../utils/extractJson.js";
+import { Website } from "../models/websiteModel.js";
 
 const masterPrompt = `
 YOU ARE A PRINCIPAL FRONTEND ARCHITECT
@@ -149,25 +151,215 @@ ABSOLUTE RULES
 - IF FORMAT IS BROKEN → RESPONSE IS INVALID
 `;
 
-export const generateWebsite = async(req, res)=>{
-    try {
-        const {prompt} = req.body
-        if(!prompt){
-            return res.status(400).json({message:"Prompt is Required"})
-        }
-        const user = await User.findById(req.user._id)
-        if(!user){
-            return res.status(400).json({message:"User Not Found"})
-        }
-        if(user.credits<10){
-            return res.status(400).json({message:"You have not enough credits to generate a website"})
-        }
-
-        const finalPrompt = masterPrompt.replace("USER_PROMPT",prompt)
-
-        let raw = await generateResponse(finalPrompt)
-        return res.status(201).json(raw)
-    } catch (error) {
-        return res.status(500).json({message:error.message})
+export const generateWebsite = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ message: "Prompt is Required" });
     }
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(400).json({ message: "User Not Found" });
+    }
+    if (user.credits < 10) {
+      return res
+        .status(400)
+        .json({ message: "You have not enough credits to generate a website" });
+    }
+
+    const finalPrompt = masterPrompt.replace("USER_PROMPT", prompt);
+
+    let raw = "";
+    let parsed = null;
+
+    for (let i = 0; i < 2 && !parsed; i++) {
+      raw = await generateResponse(finalPrompt);
+      parsed = await extractJson(raw);
+
+      if (!parsed) {
+        raw = await generateResponse(finalPrompt + "\n\nRETURN ONLY RAW JSON");
+        parsed = await extractJson(raw);
+      }
+    }
+    if (!parsed.code) {
+      return res.status(400).json({ message: "AI returned Invalid Response" });
+    }
+
+    const webiste = await Website.create({
+      user: user._id,
+      title: prompt.slice(0, 60),
+      lstestCode: parsed.code,
+      conversation: [
+        { role: "user", content: prompt },
+        { role: "ai", content: parsed.message },
+      ],
+    });
+    user.credits = user.credits - 10;
+    await user.save();
+    return res.status(201).json({
+      websiteId: webiste._id,
+      remainingCredits: user.credits,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// export const generateDemo = async(_,res)=>{
+//     try {
+//       // console.log("API hit")
+//         const raw = await generateResponse("Hello")
+//         // console.log( raw);
+//         const parsed = await extractJson(raw)
+//         return res.status(201).json(parsed)
+//     } catch (error) {
+//         return res.status(500).json({message:error.message})
+//     }
+// }
+
+export const getAllWebsites = async (req, res) => {
+  try {
+    const websites = await Website.find({ user: req.user._id });
+    return res.status(200).json(websites);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getWebsiteById = async (req, res) => {
+  try {
+    const website = await Website.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+    if (!website) {
+      return res.status(400).json({ message: "Webiste Not Found" });
+    }
+    return res.status(200).json(website);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const changeWebsite = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ message: "Prompt is Required" });
+    }
+
+    const website = await Website.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!website) {
+      return res.status(400).json({ message: "Webiste Not Found" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(400).json({ message: "User not Found" });
+    }
+
+    if (user.credits < 5) {
+      return res
+        .status(400)
+        .json({ message: "You have not Enough Credits to Generate a Website" });
+    }
+
+    const updatedPrompt = `
+    UPDATE THIS HTML WEBSITE
+
+    CURRENT CODE:
+    ${website.latestCode}
+
+    USER PROMPT:
+    ${prompt}
+
+    RETURN RAW JSON ONLY:
+    {
+    "message":"Short Confirmation",
+    "code":"<UPDATE FULL HTML CODE>"
+    }
+    `;
+    let raw = "";
+    let parsed = null;
+
+    for (let i = 0; i < 2 && !parsed; i++) {
+      raw = await generateResponse(updatedPrompt);
+      parsed = await extractJson(raw);
+
+      if (!parsed) {
+        raw = await generateResponse(finalPrompt + "\n\nRETURN ONLY RAW JSON");
+        parsed = await extractJson(raw);
+      }
+    }
+    if (!parsed.code) {
+      return res.status(400).json({ message: "AI returned Invalid Response" });
+    }
+
+    website.conversation.push(
+      {role:"user", content: prompt},
+      {role:"ai" , content: parsed.message}
+    )
+
+    website.latestCode = parsed.code
+    await website.save()
+    user.credits = user.credits - 5 
+    await user.save()
+    return res.status(200).json({
+      message:parsed.message,
+      code:parsed.code,
+      remainingCredits:user.credits
+    })
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
+export  const deployWebiste = async(req,res)=>{
+  try {
+    const website = await Website.findOne({
+      _id:req.params.id,
+      user:req.user._id
+    })
+
+    if(!website){
+      return res.status(400).json({message:"Website Not Found"})
+    }
+
+    if(!website.slug){
+      website.slug = website.title.toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,60)+website._id.toString().slice(-5)
+    }
+
+    website.deployed = true
+    website.deployedUrl = `${process.env.FRONTEND_URL}/site/${website.slug}`
+    await website.save()
+
+    return res.status(200).json({
+      url:website.deployedUrl
+    })
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+
+export const getBySlug  = async(req,res)=>{
+  try {
+    const website = await Website.findOne({
+      slug:req.params.slug
+    })
+
+    if(!website){
+      return res.status(400).json({message:"Website not Found "})
+    }
+    return res.status(200).json(website)
+    
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 }
