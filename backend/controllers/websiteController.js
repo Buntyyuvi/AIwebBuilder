@@ -188,7 +188,7 @@ export const generateWebsite = async (req, res) => {
     const webiste = await Website.create({
       user: user._id,
       title: prompt.slice(0, 60),
-      lstestCode: parsed.code,
+      latestCode: parsed.code,
       conversation: [
         { role: "user", content: prompt },
         { role: "ai", content: parsed.message },

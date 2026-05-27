@@ -5,6 +5,7 @@ import authRoute from "./routes/authRoutes.js";
 import websiteRoute from "./routes/websiteRoute.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import paymentRoute from "./routes/paymentRoutes.js";
 
 
 const app = express();
@@ -20,6 +21,7 @@ app.use(cors({
 
 app.use('/api/auth',authRoute)
 app.use('/api/website', websiteRoute)
+app.use("/api/payment",paymentRoute)
 
 app.listen(PORT, () => {
     connectDB()

@@ -30,7 +30,7 @@ const websiteSchema = new mongoose.Schema({
     conversation:[messageSchema],
     deployed:{type:Boolean, default:false},
     deployedUrl:{type:String},
-    slug:{type:String, unique: true}
+    slug:{type:String, unique: true, sparse: true}
 },{timestamps:true})
 
 export const Website = mongoose.model("Website",websiteSchema)

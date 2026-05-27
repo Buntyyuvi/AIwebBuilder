@@ -49,7 +49,7 @@ const Navbar = () => {
           {/* right Side*/}
           <div className="flex items-center gap-5">
             <button
-              onChangeCapture={() => navigate("/pricing")}
+              onClick={() => navigate("/pricing")}
               className="hidden md:block text-sm text-zinc-400 hover:text-white transition"
             >
               Pricing
